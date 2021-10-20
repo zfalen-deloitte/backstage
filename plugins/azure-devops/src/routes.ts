@@ -16,5 +16,5 @@
 import { createRouteRef } from '@backstage/core-plugin-api';
 
 export const azureDevOpsRouteRef = createRouteRef({
-  title: 'azure-devops',
+  id: 'azure-devops',
 });
