@@ -18,7 +18,7 @@ import chalk from 'chalk';
 import fs from 'fs-extra';
 import handlebars from 'handlebars';
 import ora from 'ora';
-import { basename, dirname } from 'path';
+import { basename, dirname, join } from 'path';
 import recursive from 'recursive-readdir';
 import { packageVersions } from './versions';
 
@@ -69,6 +69,7 @@ export async function templatingTask(
   templateDir: string,
   destinationDir: string,
   context: any,
+  version: string,
 ) {
   const files = await recursive(templateDir).catch(error => {
     throw new Error(`Failed to read template directory: ${error.message}`);
@@ -115,4 +116,8 @@ export async function templatingTask(
       });
     }
   }
+  const bsVersionFileName = '.bsversion';
+  await Task.forItem('creating', bsVersionFileName, () =>
+    fs.writeFile(join(destinationDir, bsVersionFileName), version),
+  );
 }
