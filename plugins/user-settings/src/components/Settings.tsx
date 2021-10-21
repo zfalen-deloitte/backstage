@@ -18,13 +18,9 @@ import React from 'react';
 import SettingsIcon from '@material-ui/icons/Settings';
 import { settingsRouteRef } from '../plugin';
 import { SidebarItem } from '@backstage/core-components';
+import { useRouteRef } from '@backstage/core-plugin-api';
 
 export const Settings = () => {
-  return (
-    <SidebarItem
-      text="Settings"
-      to={settingsRouteRef.path}
-      icon={SettingsIcon}
-    />
-  );
+  const routePath = useRouteRef(settingsRouteRef);
+  return <SidebarItem text="Settings" to={routePath()} icon={SettingsIcon} />;
 };
