@@ -82,6 +82,7 @@
   },
   "devDependencies": {
     "@backstage/cli": "^0.8.2",
+    "@backstage/core-app-api": "^0.1.19",
     "@backstage/test-utils": "^0.1.21",
     "@types/archiver": "^5.1.0",
     "@types/compression": "^1.7.0",
