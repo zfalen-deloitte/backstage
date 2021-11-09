@@ -25,6 +25,7 @@ import {
   EntityPagination,
   EntityFilter,
   EntitiesSearchFilter,
+  EntitiesValuesFilter,
 } from '../catalog/types';
 import {
   DbFinalEntitiesRow,
@@ -78,33 +79,36 @@ function stringifyPagination(input: { limit: number; offset: number }) {
 function addCondition(
   queryBuilder: Knex.QueryBuilder,
   db: Knex,
-  { key, matchValueIn, matchValueExists }: EntitiesSearchFilter,
+  filter: EntitiesSearchFilter,
+  negate: boolean = false,
 ) {
   // NOTE(freben): This used to be a set of OUTER JOIN, which may seem to
   // make a lot of sense. However, it had abysmal performance on sqlite
   // when datasets grew large, so we're using IN instead.
   const matchQuery = db<DbSearchRow>('search')
     .select('entity_id')
-    .where(function keyFilter() {
-      this.andWhere({ key: key.toLowerCase() });
-      if (matchValueExists !== false && matchValueIn) {
-        if (matchValueIn.length === 1) {
-          this.andWhere({ value: matchValueIn[0].toLowerCase() });
-        } else if (matchValueIn.length > 1) {
+    .where({ key: filter.key.toLowerCase() })
+    .andWhere(function keyFilter() {
+      if (isValuesFilter(filter)) {
+        if (filter.values.length === 1) {
+          this.where({ value: filter.values[0].toLowerCase() });
+        } else if (filter.values.length > 1) {
           this.andWhere(
             'value',
             'in',
-            matchValueIn.map(v => v.toLowerCase()),
+            filter.values.map(v => v.toLowerCase()),
           );
         }
       }
     });
   // Explicitly evaluate matchValueExists as a boolean since it may be undefined
-  queryBuilder.andWhere(
-    'entity_id',
-    matchValueExists === false ? 'not in' : 'in',
-    matchQuery,
-  );
+  queryBuilder.andWhere('entity_id', negate ? 'not in' : 'in', matchQuery);
+}
+
+function isValuesFilter(
+  filter: EntitiesSearchFilter,
+): filter is EntitiesValuesFilter {
+  return filter.hasOwnProperty('values');
 }
 
 function isEntitiesSearchFilter(
@@ -125,22 +129,33 @@ function isOrEntityFilter(
   return filter.hasOwnProperty('anyOf');
 }
 
+function isNotEntityFilter(
+  filter: { not: EntityFilter } | EntityFilter,
+): filter is { not: EntityFilter } {
+  return filter.hasOwnProperty('not');
+}
+
 function parseFilter(
   filter: EntityFilter,
   query: Knex.QueryBuilder,
   db: Knex,
+  negate: boolean = false,
 ): Knex.QueryBuilder {
   if (isEntitiesSearchFilter(filter)) {
     return query.where(function filterFunction() {
-      addCondition(this, db, filter);
+      addCondition(this, db, filter, negate);
     });
+  }
+
+  if (isNotEntityFilter(filter)) {
+    return parseFilter(filter.not, query, db, true);
   }
 
   if (isOrEntityFilter(filter)) {
     let cumulativeQuery = query;
     for (const subFilter of filter.anyOf ?? []) {
       cumulativeQuery = cumulativeQuery.orWhere(subQuery =>
-        parseFilter(subFilter, subQuery, db),
+        parseFilter(subFilter, subQuery, db, negate),
       );
     }
     return cumulativeQuery;
@@ -150,7 +165,7 @@ function parseFilter(
     let cumulativeQuery = query;
     for (const subFilter of filter.allOf ?? []) {
       cumulativeQuery = cumulativeQuery.andWhere(subQuery =>
-        parseFilter(subFilter, subQuery, db),
+        parseFilter(subFilter, subQuery, db, negate),
       );
     }
     return cumulativeQuery;
