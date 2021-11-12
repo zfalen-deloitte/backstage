@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Copyright 2020 The Backstage Authors
-#
+# #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,26 +16,23 @@
 
 set -e
 
-# Build the TechDocs CLI
+# Build techdocs-cli
 npx backstage-cli -- build --outputs cjs
 
-# Make sure to do `yarn run build` in packages/embedded-techdocs before building here.
+# Build embedded-techdocs-app
+pushd ../embedded-techdocs-app 
 
-EMBEDDED_TECHDOCS_APP_PATH=../embedded-techdocs-app
-TECHDOCS_PREVIEW_SOURCE=$EMBEDDED_TECHDOCS_APP_PATH/dist
-TECHDOCS_PREVIEW_DEST=dist/techdocs-preview-bundle
-
-# Build the embedded-techdocs-app
-pushd $EMBEDDED_TECHDOCS_APP_PATH >/dev/null
-if [[ $TECHDOCS_CLI_DEV_MODE == "true" ]]; then
+if [ "$TECHDOCS_CLI_DEV_MODE" = "true" ] ; then
   yarn build:dev
 else
   yarn build
 fi
-popd >/dev/null
 
-cp -r $TECHDOCS_PREVIEW_SOURCE $TECHDOCS_PREVIEW_DEST
+# Copy the built-in app to the package
+cp -r dist ../techdocs-cli/dist/techdocs-preview-bundle
+ 
+# Go back to techdocs-cli dir
+popd 
 
-# Write to console
 echo "[techdocs-cli]: Built the dist/ folder"
 echo "[techdocs-cli]: Imported @backstage/plugin-techdocs dist/ folder into techdocs-preview-bundle/"
